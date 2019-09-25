@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" 
+	xmlns:context="http://www.springframework.org/schema/context"
+	xmlns:aop="http://www.springframework.org/schema/aop" 
+	xmlns:tx="http://www.springframework.org/schema/tx"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans 
+	http://www.springframework.org/schema/beans/spring-beans.xsd
+	http://www.springframework.org/schema/context
+	http://www.springframework.org/schema/context/spring-context.xsd
+	http://www.springframework.org/schema/aop
+	http://www.springframework.org/schema/aop/spring-aop.xsd
+	http://www.springframework.org/schema/tx 
+	http://www.springframework.org/schema/tx/spring-tx-4.3.xsd">
+	
+	<!-- 读取jdbc.properties -->
+	<context:property-placeholder location="classpath:jdbc.properties"/>
+
+	<!-- 创建DataSource  dbcp  这里没有导入jar包  -->
+	<!-- <bean id="dataSource" class="org.apache.commons.dbcp.BasicDataSource">
+		<property name="url" value="${jdbc.url}"/>
+		<property name="driverClassName" value="${jdbc.driverClass}"/>
+		<property name="username" value="${jdbc.user}"/>
+		<property name="password" value="${jdbc.password}"/>
+		<property name="maxActive" value="10"/>
+		<property name="maxIdle" value="5"/>
+	</bean> -->
+	<!-- 配置 C3P0 数据源 -->
+	<bean id="dataSource" class="com.mchange.v2.c3p0.ComboPooledDataSource" destroy-method="close">
+		<property name="driverClass" value="${jdbc.driverClass}"/>
+		<property name="jdbcUrl" value="${jdbc.url}"/>
+		<property name="user" value="${jdbc.user}"/>
+		<property name="password" value="${jdbc.password}"/>
+		<!--连接池中保留的最大连接数。Default: 15 -->
+		<property name="maxPoolSize" value="10"/>
+		<!--最大空闲时间,60秒内未使用则连接被丢弃。若为0则永不丢弃。Default: 0 -->
+		<!-- <property name="maxIdleTime" value="5"/> -->
+	</bean>
+	
+	<!-- 创建SqlSessionFactory对象 -->
+	<bean id="sqlSessionFactory" class="org.mybatis.spring.SqlSessionFactoryBean">
+		<!-- 关联连接池 -->
+		<property name="dataSource" ref="dataSource"/>
+		<!-- 加载sql映射文件 -->
+		<property name="mapperLocations" value="classpath:mapper/*.xml"/>
+		<!-- 扫描bean包  使用别名 -->
+		<property name="typeAliasesPackage" value="com.yuan.bean"/>
+	    <property name="configurationProperties">
+				<props>
+					<prop key="cacheEnabled">true</prop> 
+				</props>
+			</property>
+	</bean>
+	  
+	  <!-- Mapper接口扫描 -->
+	  <!-- 注意：如果使用Mapper接口扫描包，那么每个Mapper接口在spring容器中的id名称为接口名首字母小写
+	  			例如：CustomerMapper  -> customerMapper    -->
+	  <bean class="org.mybatis.spring.mapper.MapperScannerConfigurer">
+	  		<!-- 配置Mapper接口所在包路径 -->
+	  		<property name="basePackage" value="com.yuan.dao"></property>
+	  		<!-- 注意使用 sqlSessionFactoryBeanName 避免出现spring 扫描组件失效问题 -->
+			<!-- <property name="sqlSessionFactoryBeanName" value="sqlSessionFactory" /> -->
+	  </bean>
+	   
+	   <!-- 开启spring的IOC注解扫描  开启后就可以使用@Service等注解 -->
+	   <context:component-scan base-package="com.yuan" use-default-filters="false">
+	   		<context:include-filter type="annotation" expression="org.springframework.stereotype.Component"/>
+	   		<context:include-filter type="annotation" expression="org.springframework.stereotype.Repository" />
+			<context:include-filter type="annotation" expression="org.springframework.stereotype.Service" />
+	   </context:component-scan>
+	
+	<!-- 开启spring的事务 这里用的是jdbc -->
+	<!-- 事务管理器 -->
+	<bean id="transactionManager" class="org.springframework.jdbc.datasource.DataSourceTransactionManager">
+			<property name="dataSource" ref="dataSource"></property>
+	</bean>
+	<!-- 启动spring事务注解 -->
+	 <tx:annotation-driven transaction-manager="transactionManager"/> 
+	<!-- 配置事务拦截器 -->
+	<!-- <tx:advice id="txAdvice" transaction-manager="transactionManager"> -->
+		<!-- 注入事务属性 -->
+		<!-- <tx:attributes>
+			<tx:method name="get*" read-only="true" />
+			<tx:method name="find*" read-only="true" />
+			<tx:method name="*" propagation="REQUIRED" rollback-for="Exception" />
+		</tx:attributes>
+	</tx:advice> -->
+
+	<!-- spring的aop配置 -->
+	<!-- <aop:config proxy-target-class="true">
+		<aop:pointcut id="txPointcut"	expression="execution(* com.yuan.service.*.*(..)) " />
+		<aop:advisor advice-ref="txAdvice" pointcut-ref="txPointcut" />
+	</aop:config> -->
+	
+	<!-- <bean id="gson" class="com.google.gson.Gson" scope="prototype"></bean> -->
+	
+	
+</beans>
